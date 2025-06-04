@@ -13,8 +13,12 @@ def fetch_product_info(url):
         res = requests.get(url, headers={'User-Agent': 'Mozilla/5.0'})
         res.raise_for_status()
         soup = BeautifulSoup(res.text, 'html.parser')
-        content_area = soup.find('div', {'id': 'h.3e74ddf81ceda5b4_70'})
-        if not content_area:
+        content_area = soup.find('div', class_='tyJCtd mGzaTb Depvyb baZpAe')
+        try:
+            if not content_area:
+                raise ValueError("Content area not found")
+        except ValueError as ve:
+            print(f"Error!: {ve}")
             return None
 
         html_blocks = []
@@ -28,11 +32,40 @@ def fetch_product_info(url):
                 text = tag.get_text(separator='\n', strip=True)
                 html_blocks.append(f"<p>{text}</p>")
 
-        return "\n".join(html_blocks)
+        ds_block = "\n".join(html_blocks)
+        return ds_block
     except Exception as e:
         print(f"Error: {e}")
         return None
     
-res = fetch_product_info("https://www.focusproducts.com.au/chemical-template/shock-n-clear")
-print(res)
-print(type(res))
+# res = fetch_product_info("https://www.focusproducts.com.au/chemical-template/shock-n-clear")
+# print(res)
+# print(type(res))
+
+BRAND = "Focus"
+CATAGORY = "Chemical"
+
+with open('products.csv', 'r') as f:
+    reader = csv.reader(f)
+    products_name = []
+    products_url = []
+    for row in reader:
+        if row:
+            products_name.append(row[0])
+            products_url.append(row[1])
+
+with open('wooCommerce_product.csv', 'w') as f:
+    writer = csv.DictWriter(f, fieldnames=['Name', 'Description', 'Category', 'Brand', 'Image'])
+    writer.writeheader()
+    for product, url in zip(products_name, products_url):
+        description = fetch_product_info(url)
+        if description:
+            writer.writerow({
+                "Name": product,
+                "Description": description,
+                "Category": CATAGORY,
+                "Brand": BRAND,
+                "Image": ""
+            })
+        else:
+            print(f"Failed to fetch description for {product}")
